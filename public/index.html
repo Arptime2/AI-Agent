@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LM Studio Chat</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>LM Studio</h1>
+      </div>
+      <button class="new-chat-btn" id="newChat">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        New Chat
+      </button>
+      <div class="chat-history" id="chatHistory"></div>
+    </aside>
+    
+    <main class="chat-container">
+      <div class="chat-header">
+        <div class="model-info">
+          <span class="model-dot"></span>
+          <span id="modelName">Loading model...</span>
+        </div>
+      </div>
+      
+      <div class="messages" id="messages"></div>
+      
+      <div class="typing-indicator" id="typingIndicator">
+        <span></span><span></span><span></span>
+      </div>
+      
+      <div class="input-area">
+        <div class="input-container">
+          <textarea 
+            id="userInput" 
+            placeholder="Send a message..." 
+            rows="1"
+          ></textarea>
+          <button id="sendBtn" class="send-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+        <p class="disclaimer">AI can make mistakes. Consider verifying important information.</p>
+      </div>
+    </main>
+
+    <aside class="tools-sidebar">
+      <div class="sidebar-header">
+        <h1>Tools</h1>
+      </div>
+      <div class="add-tool-form">
+        <input type="text" id="toolPort" placeholder="Port (e.g. 8081)" class="tool-input">
+        <button id="addToolBtn" class="add-tool-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Add Tool
+        </button>
+      </div>
+      <div class="tools-list" id="toolsList"></div>
+    </aside>
+  </div>
+  
+  <script src="/js/app.js"></script>
+</body>
+</html>

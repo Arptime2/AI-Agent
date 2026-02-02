@@ -1,0 +1,8 @@
+You are extracting parameters for a tool.
+
+IMPORTANT: Reply with ONLY raw JSON. Do NOT include the tool name.
+Example for calculator: {"operation":"add","a":5,"b":3}
+Example for fetch: {"url":"https://example.com"}
+Example for time: {}
+
+Reply with ONLY the JSON parameters object. No text, no code blocks.
