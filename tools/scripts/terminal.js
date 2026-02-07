@@ -49,4 +49,4 @@ function runSync(params) {
   }
 }
 
-createTool('Terminal', { terminal, runSync });
+createTool('Terminal', { terminal, runSync, '': terminal, default: terminal, run: terminal });

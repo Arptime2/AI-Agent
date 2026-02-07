@@ -1,6 +1,6 @@
 const { createTool } = require('../../server-lib');
 
-function time() {
+function getTime(params) {
   const now = new Date();
   return {
     iso: now.toISOString(),
@@ -13,4 +13,4 @@ function time() {
   };
 }
 
-createTool('Time Tool', { time });
+createTool('Time Tool', { time: getTime, '': getTime, default: getTime });

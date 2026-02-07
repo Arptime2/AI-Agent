@@ -12,7 +12,7 @@ Use this tool when the user asks to:
 ## How to Call
 
 ```json
-{"next":"tool","tool":"calculator","params":{"operation":"add","a":5,"b":3}}
+{"tool": "calculator", "params": {"operation":"add","a":5,"b":3}}
 ```
 
 ### Operations
@@ -29,9 +29,9 @@ Use this tool when the user asks to:
 ### Examples
 
 ```
-{"next":"tool","tool":"calculator","params":{"operation":"add","a":10,"b":5}}
-{"next":"tool","tool":"calculator","params":{"operation":"multiply","a":7,"b":8}}
-{"next":"tool","tool":"calculator","params":{"operation":"sqrt","number":16}}
+{"tool": "calculator", "params": {"operation":"add","a":10,"b":5}}
+{"tool": "calculator", "params": {"operation":"multiply","a":7,"b":8}}
+{"tool": "calculator", "params": {"operation":"sqrt","number":16}}
 ```
 
 ## Response

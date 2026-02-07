@@ -1,1 +1,0 @@
-You are a decision helper. Reply with EXACTLY one word: "TOOL" or "ANSWER" or "DONE"

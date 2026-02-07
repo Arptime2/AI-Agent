@@ -14,7 +14,7 @@ Use this tool whenever the user asks about:
 ## How to Call
 
 ```json
-{"next":"tool","tool":"time","params":{}}
+{"tool": "time", "params": {}}
 ```
 
 ## Response
@@ -37,7 +37,7 @@ User asks: "What time is it?"
 
 You respond:
 ```json
-{"next":"tool","tool":"time","params":{}}
+{"tool": "time", "params": {}}
 ```
 
 You receive:
@@ -53,6 +53,4 @@ You receive:
 }
 ```
 
-Then you give a final answer with the time information using:
-```json
-{"next":"answer","content":"The current time is..."}
+Then give the final answer with the time information.

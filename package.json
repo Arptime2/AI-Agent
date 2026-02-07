@@ -1,5 +1,12 @@
 {
   "name": "lmstudio-chat",
   "version": "1.0.0",
-  "main": "server.js"
+  "main": "server.js",
+  "devDependencies": {
+    "ws": "^8.19.0"
+  },
+  "dependencies": {
+    "chrome-remote-interface": "^0.33.3",
+    "crawlee": "^3.16.0"
+  }
 }

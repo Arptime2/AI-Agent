@@ -15,7 +15,7 @@ Use this tool when the user asks to:
 ## How to Call
 
 ```json
-{"next":"tool","tool":"terminal","params":{"command":"ls -la","timeout":5000}}
+{"tool": "terminal", "params": {"command":"ls -la","timeout":5000}}
 ```
 
 ### Parameters
@@ -35,10 +35,10 @@ Use this tool when the user asks to:
 ## Examples
 
 ```
-{"next":"tool","tool":"terminal","params":{"command":"ls -la"}}
-{"next":"tool","tool":"terminal","params":{"command":"pwd"}}
-{"next":"tool","tool":"terminal","params":{"command":"cat file.txt"}}
-{"next":"tool","tool":"terminal","params":{"command":"git status"}}
+{"tool": "terminal", "params": {"command":"ls -la"}}
+{"tool": "terminal", "params": {"command":"pwd"}}
+{"tool": "terminal", "params": {"command":"cat file.txt"}}
+{"tool": "terminal", "params": {"command":"git status"}}
 ```
 
 ## Response

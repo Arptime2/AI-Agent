@@ -39,4 +39,4 @@ function sqrt(params) {
   return { result: Math.sqrt(num) };
 }
 
-createTool('Calculator', { add, subtract, multiply, divide, pow, sqrt });
+createTool('Calculator', { add, subtract, multiply, divide, pow, sqrt, '': add, default: add });

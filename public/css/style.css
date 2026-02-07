@@ -219,6 +219,8 @@ body {
   border-radius: 4px;
   font-family: 'SF Mono', Consolas, monospace;
   font-size: 13px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .message-content pre {
@@ -227,6 +229,9 @@ body {
   border-radius: 8px;
   overflow-x: auto;
   margin: 12px 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .message-content pre code {
@@ -563,11 +568,10 @@ body {
   border-radius: 6px;
   padding: 12px;
   margin: 0;
-  overflow-x: auto;
   font-size: 13px;
   line-height: 1.5;
-}
-
-.tool-result-content {
   color: var(--text-primary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }

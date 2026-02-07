@@ -31,7 +31,6 @@ function createTool(name, endpoints) {
       const params = Object.fromEntries(url.searchParams);
       let result = typeof handler === 'function' ? handler(params) : handler;
       
-      // Handle Promise
       if (result && typeof result.then === 'function') {
         result = await result;
       }

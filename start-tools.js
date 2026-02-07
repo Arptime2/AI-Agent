@@ -1,9 +1,11 @@
 const { spawn, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 
 const TOOLS_DIR = path.join(__dirname, 'tools', 'scripts');
 const BASE_PORT = 8081;
+const SERVER_PORT = 3000;
 
 function killPort(port) {
   try {
@@ -18,6 +20,22 @@ function killPort(port) {
       });
     }
   } catch (e) {}
+}
+
+async function registerTool(name, port) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(`http://localhost:${SERVER_PORT}/api/register-tool`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve());
+    });
+    req.on('error', reject);
+    req.write(JSON.stringify({ name, port }));
+    req.end();
+  });
 }
 
 const tools = fs.readdirSync(TOOLS_DIR)
@@ -37,40 +55,47 @@ tools.forEach(tool => {
 
 console.log('');
 
-const processes = tools.map(tool => {
-  console.log(`Starting ${tool.name} on port ${tool.port}`);
-  
-  const proc = spawn('node', [tool.file, String(tool.port)], {
-    stdio: ['ignore', 'pipe', 'pipe']
+async function startAllTools() {
+  for (const tool of tools) {
+    console.log(`Starting ${tool.name} on port ${tool.port}`);
+
+    const proc = spawn('node', [tool.file, String(tool.port)], {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    proc.stdout.on('data', (data) => {
+      process.stdout.write(`[${tool.name}] ${data}`);
+    });
+
+    proc.stderr.on('data', (data) => {
+      process.stderr.write(`[${tool.name}] ${data}`);
+    });
+
+    proc.on('close', (code) => {
+      console.log(`[${tool.name}] exited with code ${code}`);
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await registerTool(tool.name, tool.port);
+    console.log(`  Registered ${tool.name} with server`);
+  }
+
+  console.log('\nAll tools started!');
+  console.log('\nTools running:');
+  tools.forEach(t => {
+    console.log(`  - ${t.name}: http://localhost:${t.port}`);
   });
+  console.log('\nPress Ctrl+C to stop all tools');
+}
 
-  proc.stdout.on('data', (data) => {
-    process.stdout.write(`[${tool.name}] ${data}`);
-  });
-
-  proc.stderr.on('data', (data) => {
-    process.stderr.write(`[${tool.name}] ${data}`);
-  });
-
-  proc.on('close', (code) => {
-    console.log(`[${tool.name}] exited with code ${code}`);
-  });
-
-  return { ...tool, proc };
-});
-
-console.log('\nAll tools started!');
-console.log('\nTools running:');
-processes.forEach(t => {
-  console.log(`  - ${t.name}: http://localhost:${t.port}`);
-});
-
-console.log('\nPress Ctrl+C to stop all tools');
+startAllTools().catch(console.error);
 
 process.on('SIGINT', () => {
   console.log('\nStopping all tools...');
-  processes.forEach(t => {
-    t.proc.kill('SIGINT');
+  tools.forEach(t => {
+    try {
+      execSync(`lsof -ti :${t.port} 2>/dev/null | xargs kill -9 2>/dev/null`);
+    } catch (e) {}
   });
   process.exit(0);
 });
