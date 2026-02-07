@@ -1,5 +1,5 @@
 const { exec, execSync } = require('child_process');
-const { createTool } = require('../../server-lib');
+const { createTool } = require('../../../server-lib');
 
 function terminal(params) {
   const command = params.command;

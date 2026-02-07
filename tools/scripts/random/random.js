@@ -1,4 +1,4 @@
-const { createTool } = require('../../server-lib');
+const { createTool } = require('../../../server-lib');
 
 async function number(params) {
   const min = parseInt(params.min) || 1;

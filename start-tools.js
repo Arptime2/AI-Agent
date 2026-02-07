@@ -39,12 +39,15 @@ async function registerTool(name, port) {
 }
 
 const tools = fs.readdirSync(TOOLS_DIR)
-  .filter(f => f.endsWith('.js'))
-  .map((file, index) => ({
-    name: file.replace('.js', ''),
-    file: path.join(TOOLS_DIR, file),
-    port: BASE_PORT + index
-  }));
+  .filter(f => fs.statSync(path.join(TOOLS_DIR, f)).isDirectory())
+  .map((folder, index) => {
+    const jsFile = path.join(TOOLS_DIR, folder, `${folder}.js`);
+    return {
+      name: folder.charAt(0).toUpperCase() + folder.slice(1),
+      file: jsFile,
+      port: BASE_PORT + index
+    };
+  });
 
 console.log('Starting tools...\n');
 

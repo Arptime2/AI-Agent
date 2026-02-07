@@ -10,6 +10,66 @@ const PROMPTS_DIR = path.join(__dirname, 'prompts');
 
 let toolsRegistry = [];
 
+// Polling infrastructure for notification tools
+const pollingRegistry = new Map();
+const notificationQueue = [];
+
+async function registerPollingTool(data) {
+  pollingRegistry.set(data.toolName, {
+    url: data.url,
+    interval: data.interval || 10000,
+    template: data.template || `{toolName}: check needed`,
+    lastPoll: null,
+    enabled: true
+  });
+  console.log(`Registered polling tool: ${data.toolName}`);
+}
+
+async function pollTool(toolName) {
+  const tool = pollingRegistry.get(toolName);
+  if (!tool || !tool.enabled) return [];
+
+  try {
+    const response = await fetch(`${tool.url}/poll`);
+    const data = await response.json();
+    
+    if (data.notifications && data.notifications.length > 0) {
+      const messages = data.notifications.map(n => ({
+        toolName,
+        message: tool.template.replace('{text}', n.text || n.message || JSON.stringify(n)),
+        timestamp: new Date().toISOString()
+      }));
+      
+      notificationQueue.push(...messages);
+      return messages;
+    }
+  } catch (e) {
+    // Silently fail
+  }
+  
+  return [];
+}
+
+async function pollAllTools() {
+  const results = [];
+  for (const [toolName] of pollingRegistry) {
+    const messages = await pollTool(toolName);
+    results.push(...messages);
+  }
+  return results;
+}
+
+function getPendingNotifications() {
+  const notifications = [...notificationQueue];
+  notificationQueue.length = 0;
+  return notifications;
+}
+
+// Poll all tools every 10 seconds
+setInterval(async () => {
+  await pollAllTools();
+}, 10000);
+
 function getPrompt(filename) {
   try {
     return fs.readFileSync(path.join(PROMPTS_DIR, filename), 'utf8').trim();
@@ -227,6 +287,30 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: e.message }));
       }
     });
+    return;
+  }
+
+  if (url.pathname === '/api/register-polling-tool') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        await registerPollingTool(data);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/notifications') {
+    const notifications = getPendingNotifications();
+    res.writeHead(200);
+    res.end(JSON.stringify({ notifications }));
     return;
   }
 

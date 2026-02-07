@@ -5,6 +5,7 @@ class ChatApp {
     this.currentConversationId = null;
     this.isGenerating = false;
     this.abortController = null;
+    this.notificationPollInterval = null;
     this.tools = [];
     this.systemPrompt = '';
     this.continuePrompt = 'Continue? Reply with just "yes" or "no".';
@@ -35,6 +36,29 @@ class ChatApp {
     this.renderTools();
     this.autoResizeTextarea();
     this.testAllTools();
+    this.startNotificationPolling();
+  }
+
+  async checkNotifications() {
+    try {
+      const response = await fetch('/api/notifications');
+      const data = await response.json();
+      if (data.notifications && data.notifications.length > 0) {
+        for (const n of data.notifications) {
+          this.addMessage('tool-result', n.message, {
+            toolName: n.toolName,
+            callNumber: Date.now()
+          });
+        }
+        await this.getAIResponse();
+      }
+    } catch (e) {}
+  }
+
+  startNotificationPolling() {
+    this.notificationPollInterval = setInterval(async () => {
+      await this.checkNotifications();
+    }, 15000);
   }
 
   async loadContinuePrompt() {

@@ -1,6 +1,6 @@
 const http = require('http');
 const https = require('https');
-const { createTool } = require('../../server-lib');
+const { createTool } = require('../../../server-lib');
 
 async function weather(params) {
   let lat = params.lat || params.latitude;

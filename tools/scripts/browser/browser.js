@@ -1,9 +1,32 @@
 const http = require('http');
 const https = require('https');
-const { createTool } = require('../../server-lib');
+const { createTool } = require('../../../server-lib');
 
+const SEARXNG_URL = 'http://127.0.0.1:8080';
 const LMSTUDIO_HOST = 'localhost';
 const LMSTUDIO_PORT = 1234;
+
+async function searxngSearch(query) {
+  const url = new URL(`${SEARXNG_URL}/search`);
+  url.searchParams.set('q', query);
+  url.searchParams.set('format', 'json');
+
+  return new Promise((resolve, reject) => {
+    http.get(url.toString(), {
+      headers: { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36' }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error('Failed to parse SearXNG response'));
+        }
+      });
+    }).on('error', reject).end();
+  });
+}
 
 async function fetchHtml(url) {
   const isHttps = url.startsWith('https');
@@ -42,7 +65,9 @@ ${content}`;
       port: LMSTUDIO_PORT,
       path: '/v1/chat/completions',
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json'
+      }
     };
 
     const req = http.request(options, (res) => {
@@ -71,26 +96,50 @@ ${content}`;
   });
 }
 
-async function fetch(params) {
-  const url = params.url;
+async function search(params) {
+  const query = params.query || params[Object.keys(params).find(k => k !== 'limit' && k !== 'fetch' && k !== 'summary')];
+  const limit = parseInt(params.limit) || 10;
+  const doFetch = params.fetch === 'true' || params.fetch === true;
   const summaryPrompt = params.summary || null;
 
-  if (!url) {
-    return { error: 'Missing url parameter' };
+  if (!query) {
+    return { error: 'Missing query parameter' };
   }
 
   try {
-    const html = await fetchHtml(url);
+    const data = await searxngSearch(query);
+    const results = (data.results || []).slice(0, limit).map(r => ({
+      title: r.title || 'No title',
+      url: r.url,
+      snippet: r.content || '',
+      engine: r.engine || 'unknown'
+    }));
 
-    try {
-      const summary = await summarizeHtml(html, summaryPrompt);
-      return { url, summary };
-    } catch (e) {
-      return { url, error: `Summary failed: ${e.message}` };
+    if (doFetch) {
+      for (let i = 0; i < results.length; i++) {
+        try {
+          const html = await fetchHtml(results[i].url);
+          const summary = await summarizeHtml(html, summaryPrompt);
+          results[i].html = summary;
+        } catch (e) {
+          results[i].html = null;
+          results[i].fetchError = e.message;
+        }
+      }
     }
-  } catch (e) {
-    return { error: `Failed to fetch ${url}: ${e.message}` };
+
+    return {
+      query,
+      count: results.length,
+      results
+    };
+  } catch (error) {
+    return { error: `Search failed: ${error.message}` };
   }
 }
 
-createTool('Fetch', { fetch, '': fetch, default: fetch });
+createTool('Browser', {
+  search,
+  '': search,
+  default: search
+});

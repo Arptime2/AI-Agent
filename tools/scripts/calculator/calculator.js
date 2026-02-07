@@ -1,4 +1,4 @@
-const { createTool } = require('../../server-lib');
+const { createTool } = require('../../../server-lib');
 
 function add(params) {
   const a = parseFloat(params.a);
