@@ -459,13 +459,13 @@ class ChatApp {
     } else if (message.role === 'tool-call') {
       div.classList.add('tool-call');
       avatar = 'T';
-      const callNumber = message.callNumber ? ` :${message.callNumber}` : '';
+      const callNumber = message.callNumber ? ` ${this.formatTimestamp(message.callNumber)}` : '';
       const argsStr = JSON.stringify(message.toolArgs || message.tool_args || {}, null, 2);
       contentHtml = `<div class="tool-call-header"><span class="tool-name">${this.escapeHtml(toolName)}${callNumber}</span></div><pre class="tool-args"><code>${this.escapeHtml(argsStr)}</code></pre>`;
     } else if (message.role === 'tool-result') {
       div.classList.add('tool-result');
       avatar = 'R';
-      const callNumber = message.callNumber ? ` :${message.callNumber}` : '';
+      const callNumber = message.callNumber ? ` ${this.formatTimestamp(message.callNumber)}` : '';
       contentHtml = `<div class="tool-result-header"><span class="tool-name">${this.escapeHtml(toolName)}${callNumber}</span></div><pre class="tool-result-content"><code>${this.escapeHtml(message.content)}</code></pre>`;
     }
 
@@ -476,6 +476,18 @@ class ChatApp {
 
   formatMessage(content) {
     return this.parseMarkdown(content);
+  }
+
+  formatTimestamp(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
 
   parseMarkdown(text) {
