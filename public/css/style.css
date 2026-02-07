@@ -499,22 +499,6 @@ body {
   background: var(--bg-tertiary);
 }
 
-.tool-status {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.tool-status.active {
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(16, 163, 127, 0.5);
-}
-
-.tool-status.inactive {
-  background: var(--text-muted);
-}
-
 .tool-info {
   flex: 1;
   min-width: 0;
@@ -531,31 +515,6 @@ body {
 .tool-item:hover .tool-name,
 .tool-item.active .tool-name {
   color: var(--text-primary);
-}
-
-.tool-port {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.tool-remove {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  opacity: 0;
-  transition: all 0.2s ease;
-}
-
-.tool-item:hover .tool-remove {
-  opacity: 1;
-}
-
-.tool-remove:hover {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
 }
 
 @media (max-width: 1024px) {
@@ -611,4 +570,190 @@ body {
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0;
+  max-width: 480px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-icon {
+  font-size: 24px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 20px 24px;
+}
+
+.modal-body p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.modal-body strong {
+  color: var(--text-secondary);
+}
+
+.confirm-params {
+  background: var(--bg-primary);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.confirm-params pre {
+  margin: 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-btn.deny {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.modal-btn.deny:hover {
+  background: #dc3545;
+  color: white;
+}
+
+.modal-btn.allow {
+  background: var(--accent);
+  color: white;
+}
+
+.modal-btn.allow:hover {
+  background: var(--accent-hover);
+}
+
+.tool-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+}
+
+.tool-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.tool-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tool-btn:hover {
+  background: var(--bg-hover);
+}
+
+.tool-btn.enabled {
+  background: var(--accent);
+  color: white;
+}
+
+.tool-btn.disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.tool-btn.confirm-btn.enabled {
+  background: #f59e0b;
+  color: white;
+}
+
+.tool-btn.confirm-btn.disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.tool-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-name {
+  font-size: 14px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-item:hover .tool-name,
+.tool-item.active .tool-name {
+  color: var(--text-primary);
+}
+
+.tool-port {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
 }

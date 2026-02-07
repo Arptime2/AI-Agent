@@ -65,20 +65,30 @@
       <div class="sidebar-header">
         <h1>Tools</h1>
       </div>
-      <div class="add-tool-form">
-        <input type="text" id="toolPort" placeholder="Port (e.g. 8081)" class="tool-input">
-        <button id="addToolBtn" class="add-tool-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Add Tool
-        </button>
-      </div>
       <div class="tools-list" id="toolsList"></div>
     </aside>
   </div>
-  
+
+  <div id="confirm-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-icon">⚠️</span>
+        <h3>Confirm Tool Execution</h3>
+      </div>
+      <div class="modal-body">
+        <p><strong>Tool:</strong> <span id="confirm-tool-name"></span></p>
+        <p><strong>Action:</strong> <span id="confirm-tool-action"></span></p>
+        <div class="confirm-params">
+          <pre id="confirm-tool-params"></pre>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button id="confirm-deny" class="modal-btn deny">✕ Cancel</button>
+        <button id="confirm-allow" class="modal-btn allow">✓ Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/js/app.js"></script>
 </body>
 </html>

@@ -7,6 +7,7 @@ class ChatApp {
     this.abortController = null;
     this.notificationPollInterval = null;
     this.tools = [];
+    this.pendingToolCall = null;
     this.systemPrompt = '';
     this.continuePrompt = 'Continue? Reply with just "yes" or "no".';
 
@@ -18,9 +19,14 @@ class ChatApp {
     this.chatHistory = document.getElementById('chatHistory');
     this.newChatBtn = document.getElementById('newChat');
     this.modelNameEl = document.getElementById('modelName');
-    this.toolPortInput = document.getElementById('toolPort');
-    this.addToolBtn = document.getElementById('addToolBtn');
     this.toolsList = document.getElementById('toolsList');
+
+    this.modal = document.getElementById('confirm-modal');
+    this.confirmToolName = document.getElementById('confirm-tool-name');
+    this.confirmToolAction = document.getElementById('confirm-tool-action');
+    this.confirmToolParams = document.getElementById('confirm-tool-params');
+    this.confirmDeny = document.getElementById('confirm-deny');
+    this.confirmAllow = document.getElementById('confirm-allow');
 
     this.init();
   }
@@ -33,10 +39,87 @@ class ChatApp {
     this.fetchModelInfo();
     this.renderMessages();
     this.renderChatHistory();
-    this.renderTools();
     this.autoResizeTextarea();
-    this.testAllTools();
+    await this.loadToolsFromServer();
+    this.setupModalListeners();
     this.startNotificationPolling();
+  }
+
+  async loadToolsFromServer() {
+    try {
+      const response = await fetch('/api/tools');
+      if (response.ok) {
+        const serverTools = await response.json();
+        const enabledMap = this.getEnabledTools();
+        this.tools = serverTools.map(t => ({
+          ...t,
+          enabled: enabledMap[t.name.toLowerCase()] !== false,
+          requireConfirm: this.getToolConfirm(t.name)
+        }));
+        this.renderTools();
+        this.saveTools();
+      }
+    } catch (e) {
+      console.error('Failed to load tools from server:', e);
+    }
+  }
+
+  getEnabledTools() {
+    try {
+      const saved = localStorage.getItem('lmstudio-chat-tools-enabled');
+      if (!saved) return {};
+      const map = JSON.parse(saved);
+      const normalized = {};
+      for (const [key, value] of Object.entries(map)) {
+        normalized[key.toLowerCase()] = value;
+      }
+      return normalized;
+    } catch (e) {
+      return {};
+    }
+  }
+
+  setToolEnabled(name, enabled) {
+    const map = this.getEnabledTools();
+    map[name.toLowerCase()] = enabled;
+    localStorage.setItem('lmstudio-chat-tools-enabled', JSON.stringify(map));
+  }
+
+  setupModalListeners() {
+    this.confirmDeny.addEventListener('click', () => this.denyTool());
+    this.confirmAllow.addEventListener('click', () => this.confirmTool());
+  }
+
+  showConfirmModal(toolName, action, params) {
+    this.confirmToolName.textContent = toolName;
+    this.confirmToolAction.textContent = action;
+    this.confirmToolParams.textContent = JSON.stringify(params, null, 2);
+    this.modal.style.display = 'flex';
+  }
+
+  hideConfirmModal() {
+    this.modal.style.display = 'none';
+    this.pendingToolCall = null;
+  }
+
+  confirmTool() {
+    const pendingCall = this.pendingToolCall;
+    this.hideConfirmModal();
+    if (pendingCall) {
+      this.executeConfirmedTool(pendingCall);
+    }
+  }
+
+  denyTool() {
+    const pendingCall = this.pendingToolCall;
+    this.hideConfirmModal();
+    if (pendingCall) {
+      const { toolName, callNumber } = pendingCall;
+      this.addMessage('tool-result', `Execution denied by user`, { toolName, callNumber });
+      this.isGenerating = false;
+      this.hideTypingIndicator();
+      this.updateButtons();
+    }
   }
 
   async checkNotifications() {
@@ -91,49 +174,6 @@ class ChatApp {
       }
     });
     this.newChatBtn.addEventListener('click', () => this.newChat());
-    this.addToolBtn.addEventListener('click', () => this.addTool());
-    this.toolPortInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.addTool();
-    });
-  }
-
-  async addTool() {
-    const port = this.toolPortInput.value.trim();
-    if (!port) return;
-    const toolName = await this.detectToolName(port);
-    const existingTool = this.tools.find(t => t.port === port);
-    if (existingTool) {
-      existingTool.name = toolName || existingTool.name;
-    } else {
-      this.tools.push({ port, name: toolName || `Tool :${port}`, active: false });
-    }
-    this.toolPortInput.value = '';
-    this.saveTools();
-    await this.renderTools();
-    this.testAllTools();
-
-    try {
-      await fetch('/api/register-tool', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: toolName || `Tool :${port}`, port })
-      });
-    } catch (e) {
-      console.error('Failed to register tool on server:', e);
-    }
-  }
-
-  async detectToolName(port) {
-    try {
-      const response = await fetch(`http://localhost:${port}/health`);
-      if (response.ok) {
-        const data = await response.json();
-        return data.tool || data.name || null;
-      }
-    } catch (e) {
-      return null;
-    }
-    return null;
   }
 
   removeTool(port) {
@@ -142,52 +182,37 @@ class ChatApp {
     this.renderTools();
   }
 
-  async testTool(tool) {
-    try {
-      const response = await fetch(`http://localhost:${tool.port}/health`);
-      if (response.ok) {
-        tool.active = true;
-        const data = await response.json();
-        if (data.tool && data.tool !== tool.name) {
-          tool.name = data.tool;
-        }
-      } else {
-        tool.active = false;
-      }
-    } catch (e) {
-      tool.active = false;
+  toggleTool(port) {
+    const tool = this.tools.find(t => t.port === port);
+    if (tool) {
+      tool.enabled = !tool.enabled;
+      this.setToolEnabled(tool.name, tool.enabled);
+      this.renderTools();
+      this.saveTools();
     }
-    return tool;
   }
 
-  async testAllTools() {
-    for (const tool of this.tools) {
-      await this.testTool(tool);
+  toggleToolConfirm(port) {
+    const tool = this.tools.find(t => t.port === port);
+    if (tool) {
+      tool.requireConfirm = !tool.requireConfirm;
+      this.setToolConfirm(tool.name, tool.requireConfirm);
+      this.renderTools();
+      this.saveTools();
     }
-    this.renderTools();
-    this.saveTools();
   }
 
-  renderTools() {
-    this.toolsList.innerHTML = '';
-    if (this.tools.length === 0) {
-      this.toolsList.innerHTML = '<p style="padding: 12px; color: var(--text-muted); font-size: 13px;">No tools added</p>';
-      return;
-    }
-    for (const tool of this.tools) {
-      const div = document.createElement('div');
-      div.className = 'tool-item';
-      div.innerHTML = `
-        <span class="tool-status ${tool.active ? 'active' : 'inactive'}"></span>
-        <div class="tool-info">
-          <div class="tool-name">${this.escapeHtml(tool.name)}</div>
-          <div class="tool-port">:${tool.port}</div>
-        </div>
-        <button class="tool-remove" data-port="${tool.port}">✕</button>
-      `;
-      div.querySelector('.tool-remove').addEventListener('click', () => this.removeTool(tool.port));
-      this.toolsList.appendChild(div);
-    }
+  setToolConfirm(name, requireConfirm) {
+    const map = this.getEnabledTools();
+    const key = name.toLowerCase() + '_confirm';
+    map[key] = requireConfirm;
+    localStorage.setItem('lmstudio-chat-tools-enabled', JSON.stringify(map));
+  }
+
+  getToolConfirm(name) {
+    const map = this.getEnabledTools();
+    const key = name.toLowerCase() + '_confirm';
+    return map[key] === true;
   }
 
   saveTools() {
@@ -319,6 +344,39 @@ class ChatApp {
         return;
       }
 
+      if (!tool.enabled) {
+        this.hideTypingIndicator();
+        this.addMessage('tool-result', `Error: Tool "${toolName}" is disabled`, { toolName, callNumber });
+        await this.getAIResponse();
+        return;
+      }
+
+      this.pendingToolCall = { toolName, params, callNumber };
+      if (!tool.requireConfirm) {
+        this.confirmTool();
+      } else {
+        const action = Object.keys(params)[0] || 'unknown';
+        this.showConfirmModal(toolName, action, params);
+      }
+    } catch (error) {
+      this.hideTypingIndicator();
+      this.addMessage('tool-result', `Error: ${error.message}`, { toolName, callNumber });
+      await this.getAIResponse();
+    }
+  }
+
+  async executeConfirmedTool(pendingCall) {
+    const { toolName, params, callNumber } = pendingCall;
+
+    try {
+      const tool = await this.findTool(toolName);
+      if (!tool) {
+        this.hideTypingIndicator();
+        this.addMessage('tool-result', `Error: Tool "${toolName}" not found`, { toolName, callNumber });
+        await this.getAIResponse();
+        return;
+      }
+
       this.abortController = new AbortController();
       const response = await fetch('/api/tool-call', {
         method: 'POST',
@@ -413,23 +471,14 @@ class ChatApp {
   }
 
   async findTool(toolName) {
-    try {
-      const response = await fetch('/api/tools');
-      if (response.ok) {
-        const tools = await response.json();
-        const name = toolName.toLowerCase();
-        return tools.find(t =>
-          t.name.toLowerCase() === name ||
-          t.name.toLowerCase().replace(/\s+/g, '') === name.replace(/\s+/g, '') ||
-          t.name.toLowerCase().includes(name) ||
-          name.includes(t.name.toLowerCase().replace(/\s/g, '')) ||
-          t.name.split(' ')[0].toLowerCase() === name
-        );
-      }
-    } catch (e) {
-      console.error('Failed to fetch tools from server:', e);
-    }
-    return null;
+    const name = toolName.toLowerCase();
+    return this.tools.find(t =>
+      t.name.toLowerCase() === name ||
+      t.name.toLowerCase().replace(/\s+/g, '') === name.replace(/\s+/g, '') ||
+      t.name.toLowerCase().includes(name) ||
+      name.includes(t.name.toLowerCase().replace(/\s/g, '')) ||
+      t.name.split(' ')[0].toLowerCase() === name
+    );
   }
 
   addMessage(role, content, extra = {}) {
@@ -566,6 +615,40 @@ class ChatApp {
       div.textContent = conv.preview || 'New Chat';
       div.addEventListener('click', () => this.loadConversation(conv.id));
       this.chatHistory.appendChild(div);
+    });
+  }
+
+  renderTools() {
+    this.toolsList.innerHTML = '';
+    if (this.tools.length === 0) {
+      this.toolsList.innerHTML = '<p style="padding: 12px; color: var(--text-muted); font-size: 13px;">No tools available</p>';
+      return;
+    }
+      this.tools.forEach(tool => {
+      const div = document.createElement('div');
+      div.className = 'tool-item';
+      const enabledClass = tool.enabled ? 'enabled' : 'disabled';
+      const confirmClass = tool.requireConfirm ? 'enabled' : 'disabled';
+      const enabledIcon = tool.enabled ? '✓' : '';
+      const confirmIcon = tool.requireConfirm ? '⚠' : '';
+      div.innerHTML = `
+        <div class="tool-info">
+          <span class="tool-name">${this.escapeHtml(tool.name)}</span>
+        </div>
+        <button class="tool-btn ${enabledClass}" data-port="${tool.port}" data-action="toggle">${enabledIcon}</button>
+        <button class="tool-btn confirm-btn ${confirmClass}" data-port="${tool.port}" data-action="confirm">${confirmIcon}</button>
+        <span class="tool-port">:${tool.port}</span>
+      `;
+      div.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const port = parseInt(btn.dataset.port);
+          const action = btn.dataset.action;
+          if (action === 'toggle') this.toggleTool(port);
+          else if (action === 'confirm') this.toggleToolConfirm(port);
+        });
+      });
+      this.toolsList.appendChild(div);
     });
   }
 

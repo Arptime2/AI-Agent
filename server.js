@@ -154,6 +154,7 @@ const paramToEndpoint = {
 };
 
 async function executeTool(toolName, port, params) {
+  console.log(`[TOOL] executeTool called: toolName=${toolName}, port=${port}, params=${JSON.stringify(params)}`);
   const { operation, ...restParams } = params;
   const filteredParams = {};
   for (const [key, value] of Object.entries(restParams)) {
@@ -175,6 +176,8 @@ async function executeTool(toolName, port, params) {
   possibleEndpoints.push('');
   possibleEndpoints.push('run');
 
+  console.log(`[TOOL] Possible endpoints: ${possibleEndpoints.join(', ')}`);
+
   let lastError = null;
 
   for (const endpoint of possibleEndpoints) {
@@ -182,21 +185,26 @@ async function executeTool(toolName, port, params) {
       const queryParams = new URLSearchParams(filteredParams).toString();
       const url = `http://localhost:${port}/${endpoint}${queryParams ? '?' + queryParams : ''}`;
 
-      console.log('Trying endpoint:', url);
+      console.log(`[TOOL] Trying endpoint: ${url}`);
 
       const response = await fetch(url);
+      console.log(`[TOOL] Fetch completed for ${url}, status=${response?.status}`);
 
       if (response && response.ok) {
         const result = await response.json();
+        console.log(`[TOOL] Success on ${url}, returning result`);
         return { toolName, result };
       } else {
         lastError = response?.status || 'Unknown error';
+        console.log(`[TOOL] Response not ok on ${url}, status=${lastError}`);
       }
     } catch (e) {
       lastError = e.message;
+      console.log(`[TOOL] Exception on endpoint "${endpoint}": ${e.message}`);
     }
   }
 
+  console.log(`[TOOL] All endpoints failed, lastError=${lastError}`);
   return { toolName, error: `Tool returned ${lastError || 404}` };
 }
 
@@ -228,6 +236,20 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname.startsWith('/tts-audio/')) {
+    const filename = path.basename(url.pathname);
+    const audioDir = path.join(__dirname, 'tools', 'scripts', 'tts', 'audio');
+    const filepath = path.join(audioDir, filename);
+    if (fs.existsSync(filepath)) {
+      res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Disposition': `attachment; filename="${filename}"` });
+      res.end(fs.readFileSync(filepath));
+    } else {
+      res.writeHead(404);
+      res.end('Audio file not found');
+    }
+    return;
+  }
+
   if (url.pathname === '/api/system-prompt') {
     const toolsDocs = getToolsDocs();
     const systemBase = getPrompt('system-base.txt');
@@ -252,15 +274,21 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/tool-call') {
+    console.log(`[API] /api/tool-call received`);
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { toolName, port, params } = JSON.parse(body);
+        const data = JSON.parse(body);
+        console.log(`[API] /api/tool-call body: ${JSON.stringify(data)}`);
+        const { toolName, port, params } = data;
+        console.log(`[API] Calling executeTool for ${toolName} on port ${port}`);
         const result = await executeTool(toolName, port, params);
+        console.log(`[API] executeTool completed, sending response: ${JSON.stringify(result).substring(0, 200)}...`);
         res.writeHead(200);
         res.end(JSON.stringify(result));
       } catch (e) {
+        console.log(`[API] /api/tool-call error: ${e.message}`);
         res.writeHead(400);
         res.end(JSON.stringify({ error: e.message }));
       }
