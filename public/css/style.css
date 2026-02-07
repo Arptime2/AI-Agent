@@ -302,8 +302,27 @@ body {
   padding: 4px 0;
 }
 
+.input-buttons {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 #userInput::placeholder {
   color: var(--text-muted);
+}
+
+#userInput::-webkit-scrollbar {
+  width: 6px;
+}
+
+#userInput::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+#userInput::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .send-btn {
@@ -328,6 +347,24 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.stop-btn {
+  background: #dc3545;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.stop-btn:hover {
+  background: #c82333;
+  transform: scale(1.05);
 }
 
 .disclaimer {

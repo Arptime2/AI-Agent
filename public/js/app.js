@@ -4,6 +4,7 @@ class ChatApp {
     this.conversations = [];
     this.currentConversationId = null;
     this.isGenerating = false;
+    this.abortController = null;
     this.tools = [];
     this.systemPrompt = '';
     this.continuePrompt = 'Continue? Reply with just "yes" or "no".';
@@ -11,6 +12,7 @@ class ChatApp {
     this.messagesContainer = document.getElementById('messages');
     this.userInput = document.getElementById('userInput');
     this.sendBtn = document.getElementById('sendBtn');
+    this.stopBtn = document.getElementById('stopBtn');
     this.typingIndicator = document.getElementById('typingIndicator');
     this.chatHistory = document.getElementById('chatHistory');
     this.newChatBtn = document.getElementById('newChat');
@@ -57,6 +59,7 @@ class ChatApp {
 
   setupEventListeners() {
     this.sendBtn.addEventListener('click', () => this.sendMessage());
+    this.stopBtn.addEventListener('click', () => this.stopGeneration());
     this.userInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -213,11 +216,12 @@ class ChatApp {
   async getAIResponse() {
     this.showTypingIndicator();
     this.isGenerating = true;
-    this.updateSendButton();
+    this.updateButtons();
 
     try {
       const conversation = this.getConversationMessages();
 
+      this.abortController = new AbortController();
       const response = await fetch('/api/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -227,8 +231,10 @@ class ChatApp {
             ...conversation
           ],
           max_tokens: 1000
-        })
+        }),
+        signal: this.abortController.signal
       });
+      this.abortController = null;
 
       if (!response.ok) throw new Error('AI request failed');
 
@@ -237,20 +243,23 @@ class ChatApp {
 
       this.hideTypingIndicator();
       this.addMessage('assistant', content);
-      this.isGenerating = false;
-      this.updateSendButton();
 
       const toolCall = this.parseToolCall(content);
       if (toolCall) {
         await this.executeToolCall(toolCall.name, toolCall.params);
       } else {
         this.isGenerating = false;
-        this.updateSendButton();
+        this.updateButtons();
       }
     } catch (error) {
-      console.error('Error in getAIResponse:', error);
+      if (error.name === 'AbortError') {
+        console.log('Generation stopped by user');
+      } else {
+        console.error('Error in getAIResponse:', error);
+      }
       this.isGenerating = false;
-      this.updateSendButton();
+      this.abortController = null;
+      this.updateButtons();
     }
   }
 
@@ -286,11 +295,14 @@ class ChatApp {
         return;
       }
 
+      this.abortController = new AbortController();
       const response = await fetch('/api/tool-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toolName, port: tool.port, params })
+        body: JSON.stringify({ toolName, port: tool.port, params }),
+        signal: this.abortController.signal
       });
+      this.abortController = null;
 
       const result = await response.json();
       const resultStr = JSON.stringify(result, null, 2);
@@ -302,10 +314,19 @@ class ChatApp {
 
       await this.getAIResponse();
     } catch (error) {
-      console.error('Tool execution error:', error);
       this.hideTypingIndicator();
-      this.addMessage('tool-result', `Error: ${error.message}`, { toolName, callNumber });
-      await this.getAIResponse();
+      this.abortController = null;
+
+      if (error.name === 'AbortError') {
+        console.log('Tool execution stopped by user');
+        this.addMessage('tool-result', 'Stopped by user', { toolName, callNumber });
+        this.isGenerating = false;
+        this.updateButtons();
+      } else {
+        console.error('Tool execution error:', error);
+        this.addMessage('tool-result', `Error: ${error.message}`, { toolName, callNumber });
+        await this.getAIResponse();
+      }
     }
   }
 
@@ -315,6 +336,7 @@ class ChatApp {
     try {
       const conversation = this.getConversationMessages();
 
+      this.abortController = new AbortController();
       const response = await fetch('/api/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -325,8 +347,10 @@ class ChatApp {
             { role: 'user', content: this.continuePrompt }
           ],
           max_tokens: 10
-        })
+        }),
+        signal: this.abortController.signal
       });
+      this.abortController = null;
 
       if (!response.ok) throw new Error('Continue check failed');
 
@@ -339,12 +363,18 @@ class ChatApp {
         await this.getAIResponse();
       } else {
         this.isGenerating = false;
-        this.updateSendButton();
+        this.updateButtons();
       }
     } catch (error) {
-      console.error('Error in askContinue:', error);
+      if (error.name === 'AbortError') {
+        console.log('Continue check stopped by user');
+      } else {
+        console.error('Error in askContinue:', error);
+      }
+      this.hideTypingIndicator();
+      this.abortController = null;
       this.isGenerating = false;
-      this.updateSendButton();
+      this.updateButtons();
     }
   }
 
@@ -458,8 +488,19 @@ class ChatApp {
     this.typingIndicator.classList.remove('visible');
   }
 
-  updateSendButton() {
-    this.sendBtn.disabled = this.isGenerating;
+  updateButtons() {
+    this.sendBtn.style.display = this.isGenerating ? 'none' : 'flex';
+    this.stopBtn.style.display = this.isGenerating ? 'flex' : 'none';
+  }
+
+  stopGeneration() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+    this.isGenerating = false;
+    this.hideTypingIndicator();
+    this.updateButtons();
   }
 
   newChat() {
