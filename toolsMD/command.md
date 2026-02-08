@@ -1,4 +1,4 @@
-# Terminal Tool
+# Command Tool
 
 Execute shell commands.
 
@@ -15,7 +15,7 @@ Use this tool when the user asks to:
 ## How to Call
 
 ```json
-{"tool": "terminal", "params": {"command":"ls -la","timeout":5000}}
+{"tool": "command", "params": {"command":"ls -la","timeout":5000}}
 ```
 
 ### Parameters
@@ -29,16 +29,16 @@ Use this tool when the user asks to:
 
 | Endpoint | Description |
 |----------|-------------|
-| terminal | Async execution with timeout (default) |
+| command | Async execution with timeout (default) |
 | runSync | Synchronous execution |
 
 ## Examples
 
 ```
-{"tool": "terminal", "params": {"command":"ls -la"}}
-{"tool": "terminal", "params": {"command":"pwd"}}
-{"tool": "terminal", "params": {"command":"cat file.txt"}}
-{"tool": "terminal", "params": {"command":"git status"}}
+{"tool": "command", "params": {"command":"ls -la"}}
+{"tool": "command", "params": {"command":"pwd"}}
+{"tool": "command", "params": {"command":"cat file.txt"}}
+{"tool": "command", "params": {"command":"git status"}}
 ```
 
 ## Response
