@@ -19,3 +19,5 @@ After a tool result is shown to you, you MUST respond with your answer based on 
 
 When you respond WITHOUT a tool call, you will be asked "Continue? yes or no". Reply with just "yes" if you want to provide more information or analyze further, or "no" if you're done.
 
+
+

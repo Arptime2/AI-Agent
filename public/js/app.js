@@ -417,7 +417,7 @@ class ChatApp {
 
       this.hideTypingIndicator();
       this.addMessage('tool-result', content, { toolName, callNumber, raw });
-      this.messages.push({ role: 'tool', content: resultStr, tool_name: toolName });
+      this.messages.push({ role: 'tool', content, tool_name: toolName });
 
       await this.getAIResponse();
     } catch (error) {
@@ -493,11 +493,21 @@ class ChatApp {
 
   getConversationMessages() {
     return this.messages.map(m => {
-      if (m.role === 'user') return { role: 'user', content: m.content };
-      if (m.role === 'assistant') return { role: 'assistant', content: m.content };
+      let content = m.content;
+      if (typeof content !== 'string') {
+        try {
+          content = JSON.stringify(content);
+        } catch (e) {
+          content = String(content);
+        }
+      }
+      if (m.role === 'user') return { role: 'user', content };
+      if (m.role === 'assistant') return { role: 'assistant', content };
       if (m.role === 'tool-call') return { role: 'user', content: `[Tool Call: ${m.toolName}]` };
-      if (m.role === 'tool-result') return { role: 'user', content: `[Tool Result: ${m.toolName}]: ${m.content}` };
-      return { role: 'user', content: m.content };
+      if (m.role === 'tool-result') {
+        return { role: 'user', content: `[Tool Result: ${m.toolName}]: ${content}` };
+      }
+      return { role: 'user', content };
     });
   }
 
@@ -531,11 +541,14 @@ class ChatApp {
     div.dataset.id = message.id;
 
     let avatar = 'AI';
-    let contentHtml = this.formatMessage(message.content);
+    let contentHtml;
     const toolName = message.toolName || message.tool_name || 'Unknown';
 
     if (message.role === 'user') {
       avatar = 'U';
+      contentHtml = this.formatMessage(message.content);
+    } else if (message.role === 'assistant') {
+      contentHtml = this.formatMessage(message.content);
     } else if (message.role === 'tool-call') {
       div.classList.add('tool-call');
       avatar = 'T';
@@ -546,8 +559,13 @@ class ChatApp {
       div.classList.add('tool-result');
       avatar = 'R';
       const callNumber = message.callNumber ? ` ${this.formatTimestamp(message.callNumber)}` : '';
-      const content = message.raw ? message.content : this.escapeHtml(message.content);
-      contentHtml = `<div class="tool-result-header"><span class="tool-name">${this.escapeHtml(toolName)}${callNumber}</span></div><pre class="tool-result-content"><code>${content}</code></pre>`;
+      let content;
+      if (typeof message.content === 'string') {
+        content = message.content;
+      } else {
+        content = JSON.stringify(message.content, null, 2);
+      }
+      contentHtml = `<div class="tool-result-header"><span class="tool-name">${this.escapeHtml(toolName)}${callNumber}</span></div><pre class="tool-result-content"><code>${this.escapeHtml(content)}</code></pre>`;
     }
 
     div.innerHTML = `<div class="message-avatar">${avatar}</div><div class="message-content">${contentHtml}</div>`;
