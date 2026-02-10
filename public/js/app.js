@@ -279,7 +279,7 @@ class ChatApp {
             { role: 'system', content: this.systemPrompt },
             ...conversation
           ],
-          max_tokens: 1000
+          max_tokens: 8000
         }),
         signal: this.abortController.signal
       });
@@ -313,16 +313,19 @@ class ChatApp {
   }
 
   parseToolCall(content) {
-    const jsonMatch = content.match(/\{"tool"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*\{[\s\S]*?\}\}/);
-    if (jsonMatch) {
+    const start = content.indexOf('{');
+    if (start === -1) return null;
+
+    for (let i = start + 1; i <= content.length; i++) {
+      const candidate = content.substring(start, i);
       try {
-        const json = JSON.parse(jsonMatch[0]);
-        if (json.tool && json.params) {
+        const json = JSON.parse(candidate);
+        if (json.tool && json.params && typeof json.params === 'object') {
           console.log('Tool call detected:', json.tool, json.params);
           return { name: json.tool, params: json.params };
         }
-      } catch (e) {
-        console.error('Failed to parse tool JSON:', e);
+      } catch {
+        continue;
       }
     }
     return null;
@@ -387,11 +390,20 @@ class ChatApp {
       this.abortController = null;
 
       const result = await response.json();
-      const resultStr = JSON.stringify(result, null, 2);
-      console.log('Tool result:', resultStr);
+      const { raw, ...resultData } = result;
+      
+      // Extract the actual content for display
+      let content;
+      if (resultData.result !== undefined) {
+        content = resultData.result;
+      } else {
+        content = JSON.stringify(resultData, null, 2);
+      }
+      
+      console.log('Tool result:', content);
 
       this.hideTypingIndicator();
-      this.addMessage('tool-result', resultStr, { toolName, callNumber });
+      this.addMessage('tool-result', content, { toolName, callNumber, raw });
       this.messages.push({ role: 'tool', content: resultStr, tool_name: toolName });
 
       await this.getAIResponse();
@@ -515,7 +527,8 @@ class ChatApp {
       div.classList.add('tool-result');
       avatar = 'R';
       const callNumber = message.callNumber ? ` ${this.formatTimestamp(message.callNumber)}` : '';
-      contentHtml = `<div class="tool-result-header"><span class="tool-name">${this.escapeHtml(toolName)}${callNumber}</span></div><pre class="tool-result-content"><code>${this.escapeHtml(message.content)}</code></pre>`;
+      const content = message.raw ? message.content : this.escapeHtml(message.content);
+      contentHtml = `<div class="tool-result-header"><span class="tool-name">${this.escapeHtml(toolName)}${callNumber}</span></div><pre class="tool-result-content"><code>${content}</code></pre>`;
     }
 
     div.innerHTML = `<div class="message-avatar">${avatar}</div><div class="message-content">${contentHtml}</div>`;
@@ -540,6 +553,16 @@ class ChatApp {
   }
 
   parseMarkdown(text) {
+    // Check if content is primarily HTML/code
+    const hasHtmlTags = /<[a-z][\s\S]*>/i.test(text);
+    const hasCodeKeywords = /function|class |import |export |const |let |var |=>|{|}|console\./.test(text);
+    
+    if (hasHtmlTags || (hasCodeKeywords && text.length > 100)) {
+      // Wrap code/HTML in code block for display
+      const escaped = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<pre><code>${escaped}</code></pre>`.replace(/\n/g, '<br>');
+    }
+    
     let html = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => `<pre><code class="language-${lang}">${this.escapeHtml(code.trim())}</code></pre>`);
     html = html.replace(/```([^`]+)```/g, (match, code) => `<code>${this.escapeHtml(code.trim())}</code>`);

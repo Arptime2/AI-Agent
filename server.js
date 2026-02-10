@@ -284,9 +284,24 @@ const server = http.createServer(async (req, res) => {
         const { toolName, port, params } = data;
         console.log(`[API] Calling executeTool for ${toolName} on port ${port}`);
         const result = await executeTool(toolName, port, params);
-        console.log(`[API] executeTool completed, sending response: ${JSON.stringify(result).substring(0, 200)}...`);
+        
+        // Check if result should be displayed as raw (contains code/HTML)
+        let raw = false;
+        if (result && result.result && typeof result.result === 'string') {
+          const content = result.result;
+          if (content.includes('<!DOCTYPE') || 
+              content.includes('<html') ||
+              content.includes('function') ||
+              content.includes('class ') ||
+              content.includes('import ') ||
+              content.includes('export ')) {
+            raw = true;
+          }
+        }
+        
+        console.log(`[API] executeTool completed, sending response`);
         res.writeHead(200);
-        res.end(JSON.stringify(result));
+        res.end(JSON.stringify({ ...result, raw }));
       } catch (e) {
         console.log(`[API] /api/tool-call error: ${e.message}`);
         res.writeHead(400);
