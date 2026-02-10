@@ -236,6 +236,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname.startsWith('/telegram/')) {
+    const filePath = path.join(__dirname, 'public', url.pathname);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      const ext = path.extname(filePath);
+      const contentTypes = {
+        '.html': 'text/html',
+        '.js': 'application/javascript',
+        '.css': 'text/css',
+        '.json': 'application/json'
+      };
+      const contentType = contentTypes[ext] || 'text/plain';
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(fs.readFileSync(filePath));
+    } else {
+      res.writeHead(404);
+      res.end('Not found');
+    }
+    return;
+  }
+
   if (url.pathname.startsWith('/tts-audio/')) {
     const filename = path.basename(url.pathname);
     const audioDir = path.join(__dirname, 'tools', 'scripts', 'tts', 'audio');
@@ -354,6 +374,54 @@ const server = http.createServer(async (req, res) => {
     const notifications = getPendingNotifications();
     res.writeHead(200);
     res.end(JSON.stringify({ notifications }));
+    return;
+  }
+
+  if (url.pathname === '/api/telegram/send') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const { message, chatId } = data;
+        
+        if (!message) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Message is required' }));
+          return;
+        }
+        
+        // Build conversation for the AI
+        const messages = [
+          { role: 'system', content: 'You are a helpful AI assistant. Keep your responses concise and helpful.' },
+          { role: 'user', content: message }
+        ];
+        
+        // Call LM Studio
+        const completion = await fetch(`http://${LMSTUDIO_HOST}:${LMSTUDIO_PORT}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages,
+            temperature: 0.7,
+            max_tokens: 2000
+          })
+        });
+        
+        if (!completion.ok) {
+          throw new Error(`LM Studio error: ${completion.status}`);
+        }
+        
+        const result = await completion.json();
+        const aiResponse = result.choices?.[0]?.message?.content || 'No response';
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({ response: aiResponse, chatId }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
     return;
   }
 

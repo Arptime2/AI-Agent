@@ -70,3 +70,46 @@ node start-tools.js
 ```
 
 Open http://localhost:3000
+
+## Telegram Integration
+
+Chat with the AI from Telegram!
+
+### Setup
+
+1. **Open the Telegram configuration page:**
+   Go to http://localhost:3000/telegram/
+
+2. **Create a bot on Telegram:**
+   - Message @BotFather on Telegram
+   - Send `/newbot`
+   - Follow instructions to name your bot
+   - Copy the bot token
+
+3. **Configure the bot:**
+   - Paste the bot token in the "Bot Token" field
+   - (Optional) Enter your Chat ID for sending messages TO Telegram
+   - Click "Save Configuration"
+
+4. **Start the bot:**
+   - Click "Start Bot"
+   - Message your bot on Telegram to test!
+
+### Features
+
+- **Two-way communication:** Send messages from Telegram, receive AI responses
+- **Works from any network:** Uses long polling, no public URL needed
+- **Auto-reconnect:** Bot automatically reconnects if connection drops
+
+### Commands
+
+- `/start` - Start conversation
+- `/help` - Show help
+- Any text - Sent to the AI
+
+### Troubleshooting
+
+If the bot doesn't respond:
+1. Check that the server is running
+2. Verify the bot token is correct
+3. Make sure you messaged your bot first (it needs to see at least one message)
