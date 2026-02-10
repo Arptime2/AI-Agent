@@ -244,6 +244,120 @@ async function getSystemPrompt() {
   return `${systemBase}\n\n${toolsDocs}`;
 }
 
+// Process conversation with tool calls support
+async function processConversationWithTools(channel, chatId) {
+  const MAX_TOOL_CALLS = 5;
+  
+  // Build conversation
+  const conversationMessages = [];
+  conversationMessages.push({ role: 'system', content: await getSystemPrompt() });
+  
+  // Add chat history (last 20 messages)
+  const recentMessages = unifiedMessages.slice(-20);
+  for (const msg of recentMessages) {
+    // Convert tool-result to user role for LM Studio compatibility
+    if (msg.role === 'tool-result') {
+      conversationMessages.push({ 
+        role: 'user', 
+        content: `[Tool Result]: ${msg.content}` 
+      });
+    } else {
+      conversationMessages.push({ role: msg.role, content: msg.content });
+    }
+  }
+
+  let toolCallCount = 0;
+  let currentResponse = '';
+
+  while (toolCallCount < MAX_TOOL_CALLS) {
+    // Call LM Studio
+    const completion = await fetch(`http://${LMSTUDIO_HOST}:${LMSTUDIO_PORT}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: conversationMessages,
+        temperature: 0.7,
+        max_tokens: 4000
+      })
+    });
+
+    if (!completion.ok) {
+      throw new Error(`LM Studio error: ${completion.status}`);
+    }
+
+    const result = await completion.json();
+    const aiResponse = result.choices?.[0]?.message?.content || 'No response';
+    
+    conversationMessages.push({ role: 'assistant', content: aiResponse });
+    currentResponse = aiResponse;
+
+    // Check for tool call pattern: {"tool": "...", "params": {...}}
+    // Look for the pattern anywhere in the response
+    const toolCallMatch = aiResponse.match(/\{\s*"tool"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*\{([\s\S]*?)\}\}/);
+    
+    if (!toolCallMatch) {
+      // No tool call, we're done
+      break;
+    }
+
+    toolCallCount++;
+    const toolName = toolCallMatch[1];
+    const paramsStr = toolCallMatch[2];
+    
+    console.log(`[CHAT] Tool call detected: ${toolName}`);
+    
+    // Parse params
+    let params;
+    try {
+      params = JSON.parse(`{${paramsStr}}`);
+    } catch (e) {
+      console.error(`[CHAT] Failed to parse tool params: ${paramsStr}`);
+      break;
+    }
+
+    // Find tool in registry
+    const tool = toolsRegistry.find(t => 
+      t.name.toLowerCase() === toolName.toLowerCase().replace(/\s+/g, '')
+    );
+
+    if (!tool) {
+      console.log(`[CHAT] Tool not found: ${toolName}`);
+      conversationMessages.push({ role: 'user', content: `Tool "${toolName}" not found` });
+      continue;
+    }
+
+    // Execute tool
+    console.log(`[CHAT] Executing tool: ${toolName} on port ${tool.port}`);
+    const toolResult = await executeTool(toolName, tool.port, params);
+    
+    // Format tool result
+    let resultContent;
+    if (toolResult.error) {
+      resultContent = `Error: ${toolResult.error}`;
+    } else if (toolResult.result !== undefined) {
+      if (typeof toolResult.result === 'string') {
+        resultContent = toolResult.result;
+      } else {
+        resultContent = JSON.stringify(toolResult.result, null, 2);
+      }
+    } else {
+      resultContent = 'Tool executed successfully';
+    }
+
+    // Store tool call and result in unified messages
+    addMessage('assistant', `{"tool": "${toolName}", "params": ${JSON.stringify(params)}}`, channel, chatId ? { telegramChatId: chatId } : {});
+    addMessage('tool-result', resultContent, channel, { toolName, telegramChatId: chatId });
+
+    // Add to conversation
+    conversationMessages.push({ role: 'user', content: `[Tool Result for ${toolName}]: ${resultContent}` });
+  }
+
+  // Store final AI response
+  addMessage('assistant', currentResponse, channel, chatId ? { telegramChatId: chatId } : {});
+
+  return currentResponse;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
@@ -334,44 +448,12 @@ const server = http.createServer(async (req, res) => {
         // Store user message
         addMessage('user', message, channel, chatId ? { telegramChatId: chatId } : {});
 
-        // Build conversation history
-        const conversationMessages = [];
-        
-        // Add system prompt
-        const systemPrompt = await getSystemPrompt();
-        conversationMessages.push({ role: 'system', content: systemPrompt });
-        
-        // Add chat history (last 20 messages)
-        const recentMessages = unifiedMessages.slice(-20);
-        for (const msg of recentMessages) {
-          conversationMessages.push({ role: msg.role, content: msg.content });
-        }
-
-        // Call LM Studio
-        const completion = await fetch(`http://${LMSTUDIO_HOST}:${LMSTUDIO_PORT}/v1/chat/completions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: conversationMessages,
-            temperature: 0.7,
-            max_tokens: 4000
-          })
-        });
-
-        if (!completion.ok) {
-          throw new Error(`LM Studio error: ${completion.status}`);
-        }
-
-        const result = await completion.json();
-        const aiResponse = result.choices?.[0]?.message?.content || 'No response';
-
-        // Store AI response
-        const aiMessage = addMessage('assistant', aiResponse, channel, chatId ? { telegramChatId: chatId } : {});
+        // Process conversation with potential tool calls
+        const finalResponse = await processConversationWithTools(channel, chatId);
 
         res.writeHead(200);
         res.end(JSON.stringify({ 
-          response: aiResponse,
-          messageId: aiMessage.id,
+          response: finalResponse,
           channel 
         }));
       } catch (e) {
