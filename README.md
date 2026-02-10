@@ -17,28 +17,35 @@ Chat UI for LM Studio with tool support.
 For the browser tool, start SearXNG Docker container:
 
 ```bash
-# Create limiter.toml to disable bot detection
-cat > limiter.toml << 'EOF'
-[botdetection]
-trusted_proxies = [
-  "127.0.0.0/8",
-  "::1",
-  "10.0.0.0/8",
-  "172.16.0.0/12",
-  "192.168.0.0/16",
-  "fd00::/8"
-]
-
-[botdetection.ip_lists]
-pass_ip = [
-  "0.0.0.0/0",
-  "::/0"
-]
-EOF
-
-# Start SearXNG with limiter.toml mounted
+# Step 1: Start container to generate default config
 docker rm -f searxng 2>/dev/null
-docker run -d --name searxng -p 8080:8080 -v "$(pwd)/limiter.toml:/etc/searxng/limiter.toml:ro" searxng/searxng
+docker run -d --name searxng -p 8080:8080 ghcr.io/privau/searxng
+
+# Step 2: Copy the default settings
+docker cp searxng:/etc/searxng/settings.yml /tmp/searxng-settings.yml
+
+# Step 3: Add json to formats (edit the file)
+# Edit /tmp/searxng-settings.yml and change:
+#   formats:
+#     - html
+# to:
+#   formats:
+#     - html
+#     - json
+
+# Step 4: Copy to /etc/searxng/ (optional, for persistence)
+sudo mkdir -p /etc/searxng
+sudo cp /tmp/searxng-settings.yml /etc/searxng/settings.yml
+
+# Step 5: Restart with corrected config
+docker rm -f searxng
+docker run -d --name searxng -p 8080:8080 \
+  -e "SEARXNG_LIMITER=false" \
+  -v "/etc/searxng/settings.yml:/etc/searxng/settings.yml:ro" \
+  ghcr.io/privau/searxng
+
+# Set autostart
+docker update --restart unless-stopped searxng
 
 # Test it's working
 curl "http://127.0.0.1:8080/search?q=test&format=json"

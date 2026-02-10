@@ -271,7 +271,7 @@ class ChatApp {
       const conversation = this.getConversationMessages();
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
       this.abortController = controller;
 
       const response = await fetch('/api/chat/completions', {
@@ -390,7 +390,7 @@ class ChatApp {
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
       this.abortController = controller;
 
       const response = await fetch('/api/tool-call', {
@@ -445,7 +445,7 @@ class ChatApp {
       const conversation = this.getConversationMessages();
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
       this.abortController = controller;
 
       const response = await fetch('/api/chat/completions', {
