@@ -270,7 +270,10 @@ class ChatApp {
     try {
       const conversation = this.getConversationMessages();
 
-      this.abortController = new AbortController();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      this.abortController = controller;
+
       const response = await fetch('/api/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -281,8 +284,9 @@ class ChatApp {
           ],
           max_tokens: 8000
         }),
-        signal: this.abortController.signal
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       this.abortController = null;
 
       if (!response.ok) throw new Error('AI request failed');
@@ -302,7 +306,12 @@ class ChatApp {
       }
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log('Generation stopped by user');
+        const isTimeout = error.message && error.message.includes('timeout');
+        if (isTimeout) {
+          this.hideTypingIndicator();
+          this.addMessage('assistant', 'Request timed out. Please try again.');
+        }
+        console.log('Generation stopped by user or timeout');
       } else {
         console.error('Error in getAIResponse:', error);
       }
@@ -380,13 +389,17 @@ class ChatApp {
         return;
       }
 
-      this.abortController = new AbortController();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      this.abortController = controller;
+
       const response = await fetch('/api/tool-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ toolName, port: tool.port, params }),
-        signal: this.abortController.signal
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       this.abortController = null;
 
       const result = await response.json();
@@ -412,8 +425,9 @@ class ChatApp {
       this.abortController = null;
 
       if (error.name === 'AbortError') {
-        console.log('Tool execution stopped by user');
-        this.addMessage('tool-result', 'Stopped by user', { toolName, callNumber });
+        const isTimeout = error.message && error.message.includes('timeout');
+        console.log(isTimeout ? 'Tool execution timed out' : 'Tool execution stopped by user');
+        this.addMessage('tool-result', isTimeout ? 'Tool call timed out' : 'Stopped by user', { toolName, callNumber });
         this.isGenerating = false;
         this.updateButtons();
       } else {
@@ -430,7 +444,10 @@ class ChatApp {
     try {
       const conversation = this.getConversationMessages();
 
-      this.abortController = new AbortController();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      this.abortController = controller;
+
       const response = await fetch('/api/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -442,8 +459,9 @@ class ChatApp {
           ],
           max_tokens: 10
         }),
-        signal: this.abortController.signal
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       this.abortController = null;
 
       if (!response.ok) throw new Error('Continue check failed');
@@ -461,7 +479,8 @@ class ChatApp {
       }
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log('Continue check stopped by user');
+        const isTimeout = error.message && error.message.includes('timeout');
+        console.log(isTimeout ? 'Continue check timed out' : 'Continue check stopped by user');
       } else {
         console.error('Error in askContinue:', error);
       }
