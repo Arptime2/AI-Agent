@@ -43,6 +43,7 @@ class ChatApp {
     await this.loadToolsFromServer();
     this.setupModalListeners();
     this.startNotificationPolling();
+    this.startMessagePolling();
   }
 
   async loadToolsFromServer() {
@@ -142,6 +143,36 @@ class ChatApp {
     this.notificationPollInterval = setInterval(async () => {
       await this.checkNotifications();
     }, 15000);
+  }
+
+  startMessagePolling() {
+    this.messagePollInterval = setInterval(async () => {
+      await this.checkMessages();
+    }, 2000);
+  }
+
+  async checkMessages() {
+    try {
+      const response = await fetch('/api/messages');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.messages && Array.isArray(data.messages)) {
+          // Get current message IDs
+          const currentIds = new Set(this.messages.map(m => m.id));
+          
+          // Find new messages
+          const newMessages = data.messages.filter(m => !currentIds.has(m.id));
+          
+          // Add new messages
+          for (const msg of newMessages) {
+            this.messages.push(msg);
+            this.renderMessage(msg);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to check messages:', e);
+    }
   }
 
   async loadContinuePrompt() {
@@ -544,6 +575,10 @@ class ChatApp {
     let contentHtml;
     const toolName = message.toolName || message.tool_name || 'Unknown';
 
+    // Channel indicator
+    const channel = message.channel || 'web';
+    const channelIcon = channel === 'telegram' ? '📱 ' : '';
+
     if (message.role === 'user') {
       avatar = 'U';
       contentHtml = this.formatMessage(message.content);
@@ -569,6 +604,12 @@ class ChatApp {
     }
 
     div.innerHTML = `<div class="message-avatar">${avatar}</div><div class="message-content">${contentHtml}</div>`;
+    
+    // Add channel indicator if from Telegram
+    if (channel === 'telegram') {
+      div.innerHTML = div.innerHTML.replace('<div class="message-content">', '<div class="message-content"><span style="font-size: 12px; color: #888;">📱 Telegram</span><br>');
+    }
+    
     this.messagesContainer.appendChild(div);
     this.scrollToBottom();
   }

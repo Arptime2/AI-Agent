@@ -10,6 +10,10 @@ const PROMPTS_DIR = path.join(__dirname, 'prompts');
 
 let toolsRegistry = [];
 
+// Unified message store for both web and Telegram
+let unifiedMessages = [];
+let telegramPendingResponses = new Map();
+
 // Polling infrastructure for notification tools
 const pollingRegistry = new Map();
 const notificationQueue = [];
@@ -208,6 +212,38 @@ async function executeTool(toolName, port, params) {
   return { toolName, error: `Tool returned ${lastError || 404}` };
 }
 
+// Helper to add a message to unified store
+function addMessage(role, content, channel = 'web', metadata = {}) {
+  const message = {
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+    role,
+    content,
+    channel, // 'web' or 'telegram'
+    timestamp: new Date().toISOString(),
+    ...metadata
+  };
+  unifiedMessages.push(message);
+  return message;
+}
+
+// Get messages since a given ID
+function getMessagesSince(sinceId = null) {
+  if (sinceId === null) {
+    return unifiedMessages;
+  }
+  const index = unifiedMessages.findIndex(m => m.id === sinceId);
+  if (index === -1) {
+    return unifiedMessages;
+  }
+  return unifiedMessages.slice(index + 1);
+}
+
+async function getSystemPrompt() {
+  const toolsDocs = getToolsDocs();
+  const systemBase = getPrompt('system-base.txt');
+  return `${systemBase}\n\n${toolsDocs}`;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
@@ -270,6 +306,84 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API: Get all messages (for polling)
+  if (url.pathname === '/api/messages' && req.method === 'GET') {
+    const since = url.searchParams.get('since');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      messages: getMessagesSince(since)
+    }));
+    return;
+  }
+
+  // API: Unified chat endpoint (handles both web and Telegram)
+  if (url.pathname === '/api/chat' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const { message, channel = 'web', chatId } = data;
+        
+        if (!message) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Message is required' }));
+          return;
+        }
+
+        // Store user message
+        addMessage('user', message, channel, chatId ? { telegramChatId: chatId } : {});
+
+        // Build conversation history
+        const conversationMessages = [];
+        
+        // Add system prompt
+        const systemPrompt = await getSystemPrompt();
+        conversationMessages.push({ role: 'system', content: systemPrompt });
+        
+        // Add chat history (last 20 messages)
+        const recentMessages = unifiedMessages.slice(-20);
+        for (const msg of recentMessages) {
+          conversationMessages.push({ role: msg.role, content: msg.content });
+        }
+
+        // Call LM Studio
+        const completion = await fetch(`http://${LMSTUDIO_HOST}:${LMSTUDIO_PORT}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: conversationMessages,
+            temperature: 0.7,
+            max_tokens: 4000
+          })
+        });
+
+        if (!completion.ok) {
+          throw new Error(`LM Studio error: ${completion.status}`);
+        }
+
+        const result = await completion.json();
+        const aiResponse = result.choices?.[0]?.message?.content || 'No response';
+
+        // Store AI response
+        const aiMessage = addMessage('assistant', aiResponse, channel, chatId ? { telegramChatId: chatId } : {});
+
+        res.writeHead(200);
+        res.end(JSON.stringify({ 
+          response: aiResponse,
+          messageId: aiMessage.id,
+          channel 
+        }));
+      } catch (e) {
+        console.error(`[API] /api/chat error: ${e.message}`);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // API: Get system prompt
   if (url.pathname === '/api/system-prompt') {
     const toolsDocs = getToolsDocs();
     const systemBase = getPrompt('system-base.txt');

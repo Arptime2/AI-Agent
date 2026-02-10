@@ -62,10 +62,15 @@ async function handleUpdate(update) {
     await sendMessage(messageChatId, 'Processing your message...');
     
     try {
-      const response = await fetch('/api/telegram/send', {
+      // Use unified chat endpoint
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, chatId: messageChatId })
+        body: JSON.stringify({ 
+          message: text, 
+          channel: 'telegram',
+          chatId: messageChatId 
+        })
       });
       
       const result = await response.json();
@@ -103,8 +108,25 @@ async function sendToChat(text) {
   }
   
   try {
-    await sendMessage(theChatId, text);
-    return { success: true };
+    // Use unified chat endpoint
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        message: text, 
+        channel: 'telegram',
+        chatId: theChatId 
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.response) {
+      await sendMessage(theChatId, result.response);
+      return { success: true };
+    } else {
+      return { error: result.error || 'No response' };
+    }
   } catch (error) {
     return { error: error.message };
   }
