@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LM Studio Chat</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=3">
 </head>
 <body>
   <div class="app">
@@ -24,10 +24,22 @@
     
     <main class="chat-container">
       <div class="chat-header">
+        <button class="menu-btn" id="menuBtn" aria-label="Open menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
         <div class="model-info">
           <span class="model-dot"></span>
           <span id="modelName">Loading model...</span>
         </div>
+        <button class="tools-btn" id="toolsBtn" aria-label="Open tools">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+          </svg>
+        </button>
       </div>
       
       <div class="messages" id="messages"></div>
@@ -67,6 +79,8 @@
       </div>
       <div class="tools-list" id="toolsList"></div>
     </aside>
+    
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
   </div>
 
   <div id="confirm-modal" class="modal" style="display:none;">
@@ -89,6 +103,6 @@
     </div>
   </div>
 
-  <script src="/js/app.js"></script>
+  <script src="/js/app.js?v=4"></script>
 </body>
 </html>

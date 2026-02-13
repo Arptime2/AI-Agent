@@ -205,6 +205,47 @@ class ChatApp {
       }
     });
     this.newChatBtn.addEventListener('click', () => this.newChat());
+    
+    // Mobile menu handlers
+    this.setupMobileMenu();
+  }
+
+  setupMobileMenu() {
+    const menuBtn = document.getElementById('menuBtn');
+    const toolsBtn = document.getElementById('toolsBtn');
+    const sidebar = document.querySelector('.sidebar');
+    const toolsSidebar = document.querySelector('.tools-sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    if (!menuBtn || !toolsBtn || !sidebar || !toolsSidebar || !overlay) return;
+    
+    menuBtn.addEventListener('click', () => {
+      sidebar.classList.add('open');
+      overlay.classList.add('visible');
+    });
+    
+    toolsBtn.addEventListener('click', () => {
+      console.log('Tools button clicked');
+      console.log('toolsSidebar:', toolsSidebar);
+      console.log('toolsSidebar classList:', toolsSidebar.classList);
+      toolsSidebar.classList.add('open');
+      overlay.classList.add('visible');
+      console.log('After adding open class:', toolsSidebar.classList);
+    });
+    
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      toolsSidebar.classList.remove('open');
+      overlay.classList.remove('visible');
+    });
+    
+    // Close sidebars when clicking on chat history item
+    document.querySelectorAll('.chat-history-item').forEach(item => {
+      item.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('visible');
+      });
+    });
   }
 
   removeTool(port) {
