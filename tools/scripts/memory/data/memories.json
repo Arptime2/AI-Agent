@@ -1,0 +1,25 @@
+{
+  "memories": [
+    {
+      "id": "zexck2iaw1r0m7w9ygg83o",
+      "memory": "User prefers articles with longer introductions and deeper analysis",
+      "triggers": [
+        "article,introduction,analysis,length"
+      ]
+    },
+    {
+      "id": "6ldp04u48osmn3sk1xlk6b",
+      "memory": "User likes long, detailed texts with comprehensive information",
+      "triggers": [
+        "long,detailed,comprehensive"
+      ]
+    },
+    {
+      "id": "o9hlfashjassfy709h1x",
+      "memory": "User likes engaging long-form content with deep themes and compelling narratives",
+      "triggers": [
+        "long,text,story,engaging"
+      ]
+    }
+  ]
+}
