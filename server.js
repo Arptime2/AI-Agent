@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { loadData, saveData, getDataKey, setDataKey } = require('./data-store');
 
 const PORT = process.env.PORT || 3000;
 const LMSTUDIO_HOST = process.env.LMSTUDIO_HOST || 'localhost';
@@ -473,6 +474,69 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       systemPrompt: `${systemBase}\n\n${toolsDocs}`
     }));
+    return;
+  }
+
+  // API: Load app data (replaces localStorage)
+  if (url.pathname === '/api/data/load' && req.method === 'GET') {
+    const data = loadData();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(data));
+    return;
+  }
+
+  // API: Save app data (replaces localStorage)
+  if (url.pathname === '/api/data/save' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const success = saveData(data);
+        res.writeHead(success ? 200 : 500);
+        res.end(JSON.stringify({ success }));
+      } catch (e) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // API: Get data by key
+  if (url.pathname === '/api/data/get' && req.method === 'GET') {
+    const key = url.searchParams.get('key');
+    if (!key) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: 'Key is required' }));
+      return;
+    }
+    const value = getDataKey(key);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ key, value }));
+    return;
+  }
+
+  // API: Set data by key
+  if (url.pathname === '/api/data/set' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { key, value } = JSON.parse(body);
+        if (!key) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Key is required' }));
+          return;
+        }
+        const success = setDataKey(key, value);
+        res.writeHead(success ? 200 : 500);
+        res.end(JSON.stringify({ success }));
+      } catch (e) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
     return;
   }
 

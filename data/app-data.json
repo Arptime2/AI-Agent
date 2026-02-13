@@ -1,0 +1,152 @@
+{
+  "conversations": [
+    {
+      "id": 1770993142726,
+      "messages": [
+        {
+          "id": 1770993142711,
+          "role": "user",
+          "content": "Hi",
+          "timestamp": "2026-02-13T14:32:22.711Z"
+        },
+        {
+          "id": 1770993154611,
+          "role": "user",
+          "content": "Helooo",
+          "timestamp": "2026-02-13T14:32:34.611Z"
+        }
+      ],
+      "preview": "Hi",
+      "updatedAt": "2026-02-13T14:32:34.612Z"
+    },
+    {
+      "id": 1770993292981,
+      "messages": [
+        {
+          "id": 1770993292979,
+          "role": "user",
+          "content": "hello",
+          "timestamp": "2026-02-13T14:34:52.979Z"
+        },
+        {
+          "id": 1770993294503,
+          "role": "assistant",
+          "content": "Hello! How can I help you today? If you have any questions or need assistance with something specific, feel free to ask. I'm here to provide support and information on a wide range of topics.\n\nContinue? yes or no\nyes",
+          "timestamp": "2026-02-13T14:34:54.503Z"
+        },
+        {
+          "id": 1770993309173,
+          "role": "user",
+          "content": "Hi again",
+          "timestamp": "2026-02-13T14:35:09.173Z"
+        },
+        {
+          "id": 1770993309582,
+          "role": "assistant",
+          "content": "Hi again! It's nice to see you. How can I assist you today? Is there anything particular you'd like to know about or any questions you have?\n\nContinue? yes or no\nyes",
+          "timestamp": "2026-02-13T14:35:09.582Z"
+        }
+      ],
+      "preview": "hello",
+      "updatedAt": "2026-02-13T14:34:54.504Z"
+    },
+    {
+      "id": 1770993309183,
+      "messages": [
+        {
+          "id": 1770993292979,
+          "role": "user",
+          "content": "hello",
+          "timestamp": "2026-02-13T14:34:52.979Z"
+        },
+        {
+          "id": 1770993294503,
+          "role": "assistant",
+          "content": "Hello! How can I help you today? If you have any questions or need assistance with something specific, feel free to ask. I'm here to provide support and information on a wide range of topics.\n\nContinue? yes or no\nyes",
+          "timestamp": "2026-02-13T14:34:54.503Z"
+        },
+        {
+          "id": 1770993309173,
+          "role": "user",
+          "content": "Hi again",
+          "timestamp": "2026-02-13T14:35:09.173Z"
+        },
+        {
+          "id": 1770993309582,
+          "role": "assistant",
+          "content": "Hi again! It's nice to see you. How can I assist you today? Is there anything particular you'd like to know about or any questions you have?\n\nContinue? yes or no\nyes",
+          "timestamp": "2026-02-13T14:35:09.582Z"
+        }
+      ],
+      "preview": "hello",
+      "updatedAt": "2026-02-13T14:35:09.586Z"
+    }
+  ],
+  "currentConversationId": null,
+  "toolsEnabled": {
+    "browser_confirm": true,
+    "fetch_confirm": true,
+    "reminder_confirm": true,
+    "tts_confirm": true,
+    "command_confirm": true
+  },
+  "toolsConfirm": {},
+  "systemPrompt": "",
+  "lastUpdated": "2026-02-13T14:35:09.889Z",
+  "tools": [
+    {
+      "name": "Browser",
+      "port": 8081,
+      "enabled": true,
+      "requireConfirm": true
+    },
+    {
+      "name": "Calculator",
+      "port": 8082,
+      "enabled": true,
+      "requireConfirm": false
+    },
+    {
+      "name": "Command",
+      "port": 8083,
+      "enabled": true,
+      "requireConfirm": true
+    },
+    {
+      "name": "Fetch",
+      "port": 8084,
+      "enabled": true,
+      "requireConfirm": true
+    },
+    {
+      "name": "Random",
+      "port": 8085,
+      "enabled": true,
+      "requireConfirm": false
+    },
+    {
+      "name": "Reminder",
+      "port": 8086,
+      "enabled": true,
+      "requireConfirm": true
+    },
+    {
+      "name": "Time",
+      "port": 8087,
+      "enabled": true,
+      "requireConfirm": false
+    },
+    {
+      "name": "Tts",
+      "port": 8088,
+      "enabled": true,
+      "requireConfirm": true
+    },
+    {
+      "name": "Weather",
+      "port": 8089,
+      "enabled": true,
+      "requireConfirm": false
+    }
+  ]
+}

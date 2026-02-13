@@ -10,6 +10,8 @@ class ChatApp {
     this.pendingToolCall = null;
     this.systemPrompt = '';
     this.continuePrompt = 'Continue? Reply with just "yes" or "no".';
+    this.serverData = {}; // Server-side storage cache
+    this.lastDataUpdate = 0;
 
     this.messagesContainer = document.getElementById('messages');
     this.userInput = document.getElementById('userInput');
@@ -31,6 +33,49 @@ class ChatApp {
     this.init();
   }
 
+  // Server-side storage methods (replaces localStorage)
+  async loadFromServer() {
+    try {
+      const response = await fetch('/api/data/load');
+      if (response.ok) {
+        this.serverData = await response.json();
+        this.lastDataUpdate = Date.now();
+        return this.serverData;
+      }
+    } catch (e) {
+      console.error('Failed to load from server:', e);
+    }
+    return {};
+  }
+
+  async saveToServer(data) {
+    try {
+      this.serverData = { ...this.serverData, ...data };
+      const response = await fetch('/api/data/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.serverData)
+      });
+      return response.ok;
+    } catch (e) {
+      console.error('Failed to save to server:', e);
+      return false;
+    }
+  }
+
+  async getData(key) {
+    // Refresh if older than 5 seconds
+    if (Date.now() - this.lastDataUpdate > 5000) {
+      await this.loadFromServer();
+    }
+    return this.serverData[key];
+  }
+
+  async setData(key, value) {
+    this.serverData[key] = value;
+    await this.saveToServer({ [key]: value });
+  }
+
   async init() {
     await this.loadSystemPrompt();
     await this.loadContinuePrompt();
@@ -44,6 +89,56 @@ class ChatApp {
     this.setupModalListeners();
     this.startNotificationPolling();
     this.startMessagePolling();
+    this.startDataSync();
+  }
+
+  // Sync data across devices
+  startDataSync() {
+    // Poll for data changes every 2 seconds
+    setInterval(async () => {
+      await this.syncData();
+    }, 2000);
+  }
+
+  async syncData() {
+    try {
+      const response = await fetch('/api/data/load');
+      if (response.ok) {
+        const serverData = await response.json();
+        
+        // Check if data is newer than what we have
+        if (serverData.lastUpdated && new Date(serverData.lastUpdated) > new Date(this.lastDataUpdate)) {
+          console.log('Data updated on server, syncing...');
+          
+          // Update local data
+          if (serverData.conversations) {
+            this.conversations = serverData.conversations;
+            this.renderChatHistory();
+          }
+          
+          if (serverData.tools) {
+            this.tools = serverData.tools;
+            this.renderTools();
+          }
+          
+          if (serverData.toolsEnabled) {
+            // Update tool enabled states
+            const enabledMap = serverData.toolsEnabled;
+            this.tools = this.tools.map(t => ({
+              ...t,
+              enabled: enabledMap[t.name.toLowerCase()] !== false,
+              requireConfirm: enabledMap[t.name.toLowerCase() + '_confirm'] === true
+            }));
+            this.renderTools();
+          }
+          
+          this.serverData = serverData;
+          this.lastDataUpdate = new Date(serverData.lastUpdated).getTime();
+        }
+      }
+    } catch (e) {
+      console.error('Data sync error:', e);
+    }
   }
 
   async loadToolsFromServer() {
@@ -51,25 +146,29 @@ class ChatApp {
       const response = await fetch('/api/tools');
       if (response.ok) {
         const serverTools = await response.json();
-        const enabledMap = this.getEnabledTools();
-        this.tools = serverTools.map(t => ({
-          ...t,
-          enabled: enabledMap[t.name.toLowerCase()] !== false,
-          requireConfirm: this.getToolConfirm(t.name)
-        }));
+        const enabledMap = await this.getEnabledTools();
+        const toolsWithSettings = [];
+        for (const t of serverTools) {
+          toolsWithSettings.push({
+            ...t,
+            enabled: enabledMap[t.name.toLowerCase()] !== false,
+            requireConfirm: await this.getToolConfirm(t.name)
+          });
+        }
+        this.tools = toolsWithSettings;
         this.renderTools();
-        this.saveTools();
+        await this.saveTools();
       }
     } catch (e) {
       console.error('Failed to load tools from server:', e);
     }
   }
 
-  getEnabledTools() {
+  async getEnabledTools() {
     try {
-      const saved = localStorage.getItem('lmstudio-chat-tools-enabled');
+      const saved = await this.getData('toolsEnabled');
       if (!saved) return {};
-      const map = JSON.parse(saved);
+      const map = saved;
       const normalized = {};
       for (const [key, value] of Object.entries(map)) {
         normalized[key.toLowerCase()] = value;
@@ -80,10 +179,10 @@ class ChatApp {
     }
   }
 
-  setToolEnabled(name, enabled) {
-    const map = this.getEnabledTools();
+  async setToolEnabled(name, enabled) {
+    const map = await this.getEnabledTools();
     map[name.toLowerCase()] = enabled;
-    localStorage.setItem('lmstudio-chat-tools-enabled', JSON.stringify(map));
+    await this.setData('toolsEnabled', map);
   }
 
   setupModalListeners() {
@@ -254,47 +353,47 @@ class ChatApp {
     this.renderTools();
   }
 
-  toggleTool(port) {
+  async toggleTool(port) {
     const tool = this.tools.find(t => t.port === port);
     if (tool) {
       tool.enabled = !tool.enabled;
-      this.setToolEnabled(tool.name, tool.enabled);
+      await this.setToolEnabled(tool.name, tool.enabled);
       this.renderTools();
-      this.saveTools();
+      await this.saveTools();
     }
   }
 
-  toggleToolConfirm(port) {
+  async toggleToolConfirm(port) {
     const tool = this.tools.find(t => t.port === port);
     if (tool) {
       tool.requireConfirm = !tool.requireConfirm;
-      this.setToolConfirm(tool.name, tool.requireConfirm);
+      await this.setToolConfirm(tool.name, tool.requireConfirm);
       this.renderTools();
-      this.saveTools();
+      await this.saveTools();
     }
   }
 
-  setToolConfirm(name, requireConfirm) {
-    const map = this.getEnabledTools();
+  async setToolConfirm(name, requireConfirm) {
+    const map = await this.getEnabledTools();
     const key = name.toLowerCase() + '_confirm';
     map[key] = requireConfirm;
-    localStorage.setItem('lmstudio-chat-tools-enabled', JSON.stringify(map));
+    await this.setData('toolsEnabled', map);
   }
 
-  getToolConfirm(name) {
-    const map = this.getEnabledTools();
+  async getToolConfirm(name) {
+    const map = await this.getEnabledTools();
     const key = name.toLowerCase() + '_confirm';
     return map[key] === true;
   }
 
-  saveTools() {
-    localStorage.setItem('lmstudio-chat-tools', JSON.stringify(this.tools));
+  async saveTools() {
+    await this.setData('tools', this.tools);
   }
 
-  loadTools() {
+  async loadTools() {
     try {
-      const saved = localStorage.getItem('lmstudio-chat-tools');
-      if (saved) this.tools = JSON.parse(saved);
+      const saved = await this.getData('tools');
+      if (saved) this.tools = saved;
     } catch (e) {
       console.error('Failed to load tools:', e);
     }
@@ -782,12 +881,12 @@ class ChatApp {
         <span class="tool-port">:${tool.port}</span>
       `;
       div.querySelectorAll('.tool-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const port = parseInt(btn.dataset.port);
           const action = btn.dataset.action;
-          if (action === 'toggle') this.toggleTool(port);
-          else if (action === 'confirm') this.toggleToolConfirm(port);
+          if (action === 'toggle') await this.toggleTool(port);
+          else if (action === 'confirm') await this.toggleToolConfirm(port);
         });
       });
       this.toolsList.appendChild(div);
@@ -817,7 +916,7 @@ class ChatApp {
       if (index !== -1) this.conversations[index] = conversation;
     }
     this.conversations = this.conversations.slice(-5);
-    localStorage.setItem('lmstudio-chat-conversations', JSON.stringify(this.conversations));
+    this.saveToServer({ conversations: this.conversations });
     this.renderChatHistory();
   }
 
@@ -829,14 +928,23 @@ class ChatApp {
     return 'New Chat';
   }
 
-  loadFromStorage() {
+  async loadFromStorage() {
     try {
-      const saved = localStorage.getItem('lmstudio-chat-conversations');
-      if (saved) this.conversations = JSON.parse(saved);
+      const data = await this.loadFromServer();
+      if (data.conversations) this.conversations = data.conversations;
+      if (data.tools) this.tools = data.tools;
+      if (data.toolsEnabled) {
+        // Apply tool enabled states
+        const enabledMap = data.toolsEnabled;
+        this.tools = this.tools.map(t => ({
+          ...t,
+          enabled: enabledMap[t.name.toLowerCase()] !== false
+        }));
+      }
     } catch (e) {
-      console.error('Failed to load conversations:', e);
+      console.error('Failed to load from storage:', e);
     }
-    this.loadTools();
+    await this.loadTools();
   }
 }
 

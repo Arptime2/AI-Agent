@@ -1,4 +1,15 @@
 {
-  "nextId": 4,
-  "reminders": []
+  "nextId": 8,
+  "reminders": [
+    {
+      "id": 6,
+      "text": "Reminder set for 10 seconds from now using ISO format",
+      "due": "2026-02-14T13:19:00.000Z"
+    },
+    {
+      "id": 7,
+      "text": "Reminder set at 10 seconds from current time",
+      "due": "2026-02-14T13:19:00.000Z"
+    }
+  ]
 }
