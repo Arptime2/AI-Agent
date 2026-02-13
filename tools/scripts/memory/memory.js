@@ -27,7 +27,7 @@ function generateId() {
 // Store new memory
 function store(params) {
   const memory = params.memory || params.text;
-  const triggers = params.triggers || params.trigger;
+  let triggers = params.triggers || params.trigger;
 
   if (!memory) {
     return { error: 'memory parameter is required' };
@@ -37,7 +37,15 @@ function store(params) {
     return { error: 'triggers parameter is required (array of trigger words)' };
   }
 
-  const triggerArray = Array.isArray(triggers) ? triggers : [triggers];
+  // Handle triggers: can be array, comma-separated string, or single string
+  let triggerArray;
+  if (Array.isArray(triggers)) {
+    triggerArray = triggers;
+  } else if (typeof triggers === 'string' && triggers.includes(',')) {
+    triggerArray = triggers.split(',').map(t => t.trim());
+  } else {
+    triggerArray = [triggers];
+  }
   
   if (triggerArray.length === 0) {
     return { error: 'At least one trigger word is required' };
@@ -58,7 +66,7 @@ function store(params) {
     success: true,
     id,
     memory: memory.trim(),
-    triggers: triggerArray
+    triggers: triggerArray.map(t => t.toLowerCase().trim())
   };
 }
 

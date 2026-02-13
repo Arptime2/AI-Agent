@@ -1,8 +1,8 @@
 # Memory Tool
 
-Store and retrieve long-term memories. You can save important facts, preferences, and context to remember across conversations. Use this often to remember anything.
+Store and retrieve long-term memories. You can save important facts, preferences, and context to remember across conversations. Use this often to remember anything with the retrieve operation of this tool.
 
-## When to Use
+## When to Use store operation
 
 Use this tool to remember:
 - User preferences (themes, settings, formats)
@@ -16,7 +16,7 @@ Do NOT store:
 
 ## When to Retrieve
 
-Call **retrieve** before responses directly to the user to check if any memories should influence your response to see if memories already exist that might help:
+Call **retrieve** operation of the store tool before ANY and EVERY responses directly to the user to check if any memories should influence your response to see if memories already exist that might help:
 
 **Call retrieve when:**
 - User asks a question that might relate to stored preferences or things that could be stored
@@ -25,9 +25,6 @@ Call **retrieve** before responses directly to the user to check if any memories
 - When the user input contains keywords that might trigger memories
 - The topic seems new
 
-**Do NOT call retrieve when:**
-- Every single response (avoid overhead but use it often to make sure you are not missing something)
-- The user is just acknowledging or saying thanks
 
 **What text to use:**
 Use the **user's input message** as the text parameter:

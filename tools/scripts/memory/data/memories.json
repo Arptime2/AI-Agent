@@ -1,24 +1,17 @@
 {
   "memories": [
     {
-      "id": "zexck2iaw1r0m7w9ygg83o",
-      "memory": "User prefers articles with longer introductions and deeper analysis",
+      "id": "7ohh9xlxyy213yzr9q923lo",
+      "memory": "AI successfully deleted all memories through multiple individual deletion operations, carefully tracking each memory ID and verifying deletions step by step until no memories remained in storage",
       "triggers": [
-        "article,introduction,analysis,length"
+        "delete,memories,steps,process,verification"
       ]
     },
     {
-      "id": "6ldp04u48osmn3sk1xlk6b",
-      "memory": "User likes long, detailed texts with comprehensive information",
+      "id": "jy43dyc9def2v0nqa5liw",
+      "memory": "alled hello",
       "triggers": [
-        "long,detailed,comprehensive"
-      ]
-    },
-    {
-      "id": "o9hlfashjassfy709h1x",
-      "memory": "User likes engaging long-form content with deep themes and compelling narratives",
-      "triggers": [
-        "long,text,story,engaging"
+        "hello"
       ]
     }
   ]
