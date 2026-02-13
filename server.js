@@ -632,7 +632,18 @@ const server = http.createServer(async (req, res) => {
   res.end('Not found');
 });
 
-server.listen(PORT, () => {
-  console.log(`LM Studio Chat UI running at http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  const ip = require('os').networkInterfaces();
+  let localIp = 'localhost';
+  for (const name of Object.keys(ip)) {
+    for (const iface of ip[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        localIp = iface.address;
+        break;
+      }
+    }
+  }
+  console.log(`LM Studio Chat UI running at http://0.0.0.0:${PORT}`);
+  console.log(`Network access: http://${localIp}:${PORT}`);
   console.log(`Proxying to LM Studio at ${LMSTUDIO_HOST}:${LMSTUDIO_PORT}`);
 });
